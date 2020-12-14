@@ -125,6 +125,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     double[] pathLat = new double[9];
     double[] pathLng = new double[9];
 
+    int startCount = 0;
+
     //タイマー関連
     private Timer mainTimer;
     private MainTimerTask mainTimerTask = null;
@@ -208,7 +210,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for (BluetoothDevice device : devices) {
             //string型の固定値の比較.equals(string)
             //ペアリング用　盲導盤の回路に搭載されてるbluetoothモジュール参照
-            String DEVICE_NAME = "SBDBT-001bdc057cd3";
+            String DEVICE_NAME = "SBDBT-001bdc087049";
             if (device.getName().equals(DEVICE_NAME)) {
 
                 bluetoothState.setText(device.getName());
@@ -406,12 +408,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             time_count = 0;
             //内部ストレージにtxtファイル作成
             String getNowDate = GetNowDate();
-            String path = Environment.getExternalStorageDirectory().getPath() + "/" + getNowDate +".txt";
-            String[] paths = {Environment.getExternalStorageDirectory().toString() + "/" + getNowDate + ".txt"};
+            String path = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate +".txt";
+            String[] paths = {getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate + ".txt"};
             String[] mimeTypes = {"text/plain"};
 
-            try(FileOutputStream fileOutputStream = openFileOutput(String.valueOf(paths), Context.MODE_APPEND)) { //ここが変わった
-                //FileOutputStream fileOutputStream = new FileOutputStream(path);
+            try{ //ここが変わった
+
+                FileOutputStream fileOutputStream = new FileOutputStream(path);
                 OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
                 BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
 
@@ -435,8 +438,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     bufferedWriter.newLine();
                     time_count += dt;
                 }
-                fileOutputStream.flush();
-                fileOutputStream.close();
+                bufferedWriter.flush();
+                bufferedWriter.close();
                 Toast.makeText(MapsActivity.this, "Saved data.", Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -449,6 +452,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         private void start() {
+            startCount = 1;
             if (null != mainTimer) {
                 mainTimer.cancel();
                 mainTimer = null;
@@ -472,6 +476,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         private void stop() {
             if (null != mainTimer) {
+                startCount = 0;
                 currentLat = pathLat[path_val];
                 currentLng = pathLng[path_val];
                 //mainTimer.cancel();
@@ -760,11 +765,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             else if (-10 <= target_deg && target_deg <= 10) direction = "3";  //上
                             else if (10 < target_deg && target_deg <= 45) direction = "4";  //右上
                             else if (45 < target_deg) direction = "5";  //右
-                            if (direction != output) {
+                            if (/*!direction.equals(output)&& */startCount == 1) {
                                 output = direction;
-
                                 try {
-                                    mmOutputStream.write(output.getBytes());
+                                    mSocket.connect();
+                                    mmInStream = mSocket.getInputStream();
+                                    mmOutputStream = mSocket.getOutputStream();
+                                    mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            if(startCount == 0){
+                                output = "0";
+                                try {
+                                    mSocket.connect();
+                                    mmInStream = mSocket.getInputStream();
+                                    mmOutputStream = mSocket.getOutputStream();
+                                    mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
