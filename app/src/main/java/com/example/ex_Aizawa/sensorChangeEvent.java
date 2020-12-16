@@ -1,4 +1,4 @@
-package com.example.ex_builtingps;
+package com.example.ex_Aizawa;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;

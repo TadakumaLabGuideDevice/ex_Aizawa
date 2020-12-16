@@ -1,9 +1,8 @@
-package com.example.ex_builtingps;
+package com.example.ex_Aizawa;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -99,31 +98,41 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     double exLng = 140.105440123665;  //ex1の経度
     double addLat = 0.00004505;  //5[m]分の移動量(緯度換算)
     double addLng = 0.00005685;  //5[m]分の移動量(経度換算)
-    double ex2Lat = exLat - addLat;
-    double ex2Lng = exLng - addLng;
-    double ex3Lat = exLat - addLat * 2.0;
-    double ex3Lng = exLng - addLng * 2.0;
+    //double addLat = 0.00001802;  //2[m]分の移動量(緯度換算)
+    //double addLng = 0.00002274;  //2[m]分の移動量(経度換算)
+    double ex2Lat = exLat + addLat/5;
+    double ex3Lat = exLat + addLat/2;
+    double ex4Lat = exLat - addLat/5;
+    double ex5Lat = exLat - addLat/2;
+    double ex2Lng = exLng - addLng*3/10;
+    double ex3Lng = exLng - addLng*7/10;
+    double ex4Lng = exLng - addLng;
+    double ex5Lng = exLng + addLng*3/10;
+    double ex6Lng = exLng + addLng*7/10;
+    double ex7Lng = exLng + addLng;
 
     LatLng ex1 = new LatLng(exLat, exLng);
-    LatLng ex2 = new LatLng(exLat, ex2Lng);
-    LatLng ex3 = new LatLng(exLat, ex3Lng);
-    LatLng ex4 = new LatLng(ex2Lat, exLng);
-    LatLng ex5 = new LatLng(ex2Lat, ex2Lng);
-    LatLng ex6 = new LatLng(ex2Lat, ex3Lng);
-    LatLng ex7 = new LatLng(ex3Lat, exLng);
-    LatLng ex8 = new LatLng(ex3Lat, ex2Lng);
-    LatLng ex9 = new LatLng(ex3Lat, ex3Lng);
+    LatLng ex2 = new LatLng(ex2Lat, exLng);
+    LatLng ex3 = new LatLng(ex3Lat, ex2Lng);
+    LatLng ex4 = new LatLng(ex3Lat, ex3Lng);
+    LatLng ex5 = new LatLng(ex2Lat, ex4Lng);
+    LatLng ex6 = new LatLng(ex4Lat, ex4Lng);
+    LatLng ex7 = new LatLng(ex5Lat, ex3Lng);
+    LatLng ex8 = new LatLng(ex5Lat, ex2Lng);
+    LatLng ex9 = new LatLng(ex4Lat, exLng);
+    LatLng ex10 = new LatLng(ex2Lat, exLng);
+    LatLng ex11 = new LatLng(ex3Lat, ex5Lng);
+    LatLng ex12 = new LatLng(ex3Lat, ex6Lng);
+    LatLng ex13 = new LatLng(ex2Lat, ex7Lng);
+    LatLng ex14 = new LatLng(ex4Lat, ex7Lng);
+    LatLng ex15 = new LatLng(ex5Lat, ex6Lng);
+    LatLng ex16 = new LatLng(ex5Lat, ex5Lng);
+    LatLng ex17 = new LatLng(ex4Lat, exLng);
 
-    /*LatLng ex10 = new LatLng(exLat, ex3Lng + addLng * 2.0);
-    LatLng ex11 = new LatLng(ex3Lat, ex3Lng + addLng * 2.0);
-    LatLng ex12 = new LatLng(ex3Lat - addLat * 2.0, exLng);
-    LatLng ex13 = new LatLng(ex3Lat - addLat * 2.0, ex3Lng);
-    LatLng ex14 = new LatLng(ex3Lat - addLat * 2.0, ex3Lng + addLng * 2.0);*/
-
-    int path_val = 9;
+    int path_val = 18;
     int mode = 1;
-    double[] pathLat = new double[9];
-    double[] pathLng = new double[9];
+    double[] pathLat = new double[18];
+    double[] pathLng = new double[18];
 
     int startCount = 0;
 
@@ -333,8 +342,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.addMarker(options);
         options.position(ex9);
         mMap.addMarker(options);
-
-        /*options.position(ex10);
+        options.position(ex10);
         mMap.addMarker(options);
         options.position(ex11);
         mMap.addMarker(options);
@@ -343,7 +351,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         options.position(ex13);
         mMap.addMarker(options);
         options.position(ex14);
-        mMap.addMarker(options);*/
+        mMap.addMarker(options);
+        options.position(ex15);
+        mMap.addMarker(options);
+        options.position(ex16);
+        mMap.addMarker(options);
+        options.position(ex17);
+        mMap.addMarker(options);
     }
 
     //GPSによる割り込み　ここから
@@ -494,10 +508,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //各モードでのルート設定
     void experiment_mode(int mode) {
-        ex2Lat = exLat - addLat;
-        ex2Lng = exLng - addLng;
-        ex3Lat = exLat - addLat * 2.0;
-        ex3Lng = exLng - addLng * 2.0;
+        ex2Lat = exLat + addLat/5;
+        ex3Lat = exLat + addLat/2;
+        ex4Lat = exLat - addLat/5;
+        ex5Lat = exLat - addLat/2;
+        ex2Lng = exLng - addLng*3/10;
+        ex3Lng = exLng - addLng*7/10;
+        ex4Lng = exLng - addLng;
+        ex5Lng = exLng + addLng*3/10;
+        ex6Lng = exLng + addLng*7/10;
+        ex7Lng = exLng + addLng;
         switch (mode) {
             case 1:
                 pathLat[0] = exLat;
@@ -505,19 +525,37 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 pathLat[1] = ex2Lat;
                 pathLng[1] = exLng;   //ex4
                 pathLat[2] = ex3Lat;
-                pathLng[2] = exLng;   //ex7
+                pathLng[2] = ex2Lng;   //ex7
                 pathLat[3] = ex3Lat;
-                pathLng[3] = ex2Lng;  //ex8
-                pathLat[4] = ex3Lat;
-                pathLng[4] = ex3Lng;  //ex9
-                pathLat[5] = ex2Lat;
-                pathLng[5] = ex3Lng;  //ex6
-                pathLat[6] = exLat;
+                pathLng[3] = ex3Lng;  //ex8
+                pathLat[4] = ex2Lat;
+                pathLng[4] = ex4Lng;  //ex9
+                pathLat[5] = ex4Lat;
+                pathLng[5] = ex4Lng;  //ex6
+                pathLat[6] = ex5Lat;
                 pathLng[6] = ex3Lng;  //ex3
-                pathLat[7] = exLat;
+                pathLat[7] = ex5Lat;
                 pathLng[7] = ex2Lng;  //ex2
-                pathLat[8] = exLat;
+                pathLat[8] = ex4Lat;
                 pathLng[8] = exLng;   //ex1
+                pathLat[9] = ex2Lat;
+                pathLng[9] = exLng;   //ex1
+                pathLat[10] = ex3Lat;
+                pathLng[10] = ex5Lng;   //ex4
+                pathLat[11] = ex3Lat;
+                pathLng[11] = ex6Lng;   //ex7
+                pathLat[12] = ex2Lat;
+                pathLng[12] = ex7Lng;  //ex8
+                pathLat[13] = ex4Lat;
+                pathLng[13] = ex7Lng;  //ex9
+                pathLat[14] = ex5Lat;
+                pathLng[14] = ex6Lng;  //ex6
+                pathLat[15] = ex5Lat;
+                pathLng[15] = ex5Lng;  //ex3
+                pathLat[16] = ex4Lat;
+                pathLng[16] = exLng;  //ex2
+                pathLat[17] = exLat;
+                pathLng[17] = exLng;   //ex1
                 break;
 
             case 2:
@@ -674,7 +712,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for (int i = 0; i < 1; i++) {
             current_points = new ArrayList<LatLng>();
             current_lineOptions = new PolylineOptions();
-            for (int drow_val = 0; drow_val <= 8; drow_val++) {
+            for (int drow_val = 0; drow_val <= 17; drow_val++) {
                 double drowLat = pathLat[drow_val];
                 double drowLng = pathLng[drow_val];
                 current_points.add(new LatLng(drowLat, drowLng));
@@ -687,20 +725,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.addPolyline(current_lineOptions);
 
         ex1 = new LatLng(exLat, exLng);
-        ex2 = new LatLng(exLat, ex2Lng);
-        ex3 = new LatLng(exLat, ex3Lng);
-        ex4 = new LatLng(ex2Lat, exLng);
-        ex5 = new LatLng(ex2Lat, ex2Lng);
-        ex6 = new LatLng(ex2Lat, ex3Lng);
-        ex7 = new LatLng(ex3Lat, exLng);
-        ex8 = new LatLng(ex3Lat, ex2Lng);
-        ex9 = new LatLng(ex3Lat, ex3Lng);
-
-        /*ex10 = new LatLng(exLat, ex3Lng + addLng * 2.0);
-        ex11 = new LatLng(ex3Lat, ex3Lng + addLng * 2.0);
-        ex12 = new LatLng(ex3Lat - addLat * 2.0, exLng);
-        ex13 = new LatLng(ex3Lat - addLat * 2.0, ex3Lng);
-        ex14 = new LatLng(ex3Lat - addLat * 2.0, ex3Lng + addLng * 2.0);*/
+        ex2 = new LatLng(ex2Lat, exLng);
+        ex3 = new LatLng(ex3Lat, ex2Lng);
+        ex4 = new LatLng(ex3Lat, ex3Lng);
+        ex5 = new LatLng(ex2Lat, ex4Lng);
+        ex6 = new LatLng(ex4Lat, ex4Lng);
+        ex7 = new LatLng(ex5Lat, ex3Lng);
+        ex8 = new LatLng(ex5Lat, ex2Lng);
+        ex9 = new LatLng(ex4Lat, exLng);
+        ex10 = new LatLng(ex2Lat, exLng);
+        ex11 = new LatLng(ex3Lat, ex5Lng);
+        ex12 = new LatLng(ex3Lat, ex6Lng);
+        ex13 = new LatLng(ex2Lat, ex7Lng);
+        ex14 = new LatLng(ex4Lat, ex7Lng);
+        ex15 = new LatLng(ex5Lat, ex6Lng);
+        ex16 = new LatLng(ex5Lat, ex5Lng);
+        ex17 = new LatLng(ex4Lat, exLng);
     }
 
     //スタートボタンを押した際誘導開始　　タイマーによりここがループ
@@ -740,7 +780,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         path_val++; //次の座標の更新
 
                         //最終座標に着いたら終了
-                        if (path_val == 9) {
+                        if (path_val == 18) {
                             Toast.makeText(MapsActivity.this, "FINISH!!", Toast.LENGTH_SHORT).show();
 
                             if (connectFlg) {
