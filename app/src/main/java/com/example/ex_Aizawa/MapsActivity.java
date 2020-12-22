@@ -500,7 +500,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         private void mode() {
-            if (mode == 4) mode = 1;
+            if (mode == 3) mode = 1;
             else mode++;
             status.setText("実験モード" + mode + "に変更");
         }
@@ -559,47 +559,83 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 break;
 
             case 2:
-                pathLat[0] = exLat;
-                pathLng[0] = exLng;   //ex1
-                pathLat[1] = ex2Lat;
-                pathLng[1] = exLng;   //ex4
-                pathLat[2] = ex2Lat;
-                pathLng[2] = ex2Lng;  //ex5
-                pathLat[3] = ex3Lat;
-                pathLng[3] = ex2Lng;  //ex8
-                pathLat[4] = ex3Lat;
-                pathLng[4] = ex3Lng;  //ex9
+                pathLat[0] = ex2Lat;
+                pathLng[0] = ex4Lng;  //ex9
+                pathLat[1] = ex4Lat;
+                pathLng[1] = ex4Lng;  //ex6
+                pathLat[2] = ex5Lat;
+                pathLng[2] = ex3Lng;  //ex3
+                pathLat[3] = ex5Lat;
+                pathLng[3] = ex2Lng;  //ex2
+                pathLat[4] = ex4Lat;
+                pathLng[4] = exLng;   //ex1
                 pathLat[5] = ex2Lat;
-                pathLng[5] = ex3Lng;  //ex6
-                pathLat[6] = exLat;
-                pathLng[6] = ex3Lng;  //ex3
-                pathLat[7] = exLat;
-                pathLng[7] = ex2Lng;  //ex2
-                pathLat[8] = exLat;
-                pathLng[8] = exLng;   //ex1
+                pathLng[5] = exLng;   //ex1
+                pathLat[6] = ex3Lat;
+                pathLng[6] = ex5Lng;   //ex4
+                pathLat[7] = ex3Lat;
+                pathLng[7] = ex6Lng;   //ex7
+                pathLat[8] = ex2Lat;
+                pathLng[8] = ex7Lng;  //ex8
+                pathLat[9] = ex4Lat;
+                pathLng[9] = ex7Lng;  //ex9
+                pathLat[10] = ex5Lat;
+                pathLng[10] = ex6Lng;  //ex6
+                pathLat[11] = ex5Lat;
+                pathLng[11] = ex5Lng;  //ex3
+                pathLat[12] = ex4Lat;
+                pathLng[12] = exLng;  //ex2
+                pathLat[13] = exLat;
+                pathLng[13] = exLng;   //ex1
+                pathLat[14] = ex2Lat;
+                pathLng[14] = exLng;   //ex4
+                pathLat[15] = ex3Lat;
+                pathLng[15] = ex2Lng;   //ex7
+                pathLat[16] = ex3Lat;
+                pathLng[16] = ex3Lng;  //ex8
+                pathLat[17] = ex2Lat;
+                pathLng[17] = ex4Lng;  //ex9
                 break;
 
             case 3:
-                pathLat[0] = exLat;
-                pathLng[0] = exLng;   //ex1
-                pathLat[1] = exLat;
-                pathLng[1] = ex2Lng;  //ex2
-                pathLat[2] = exLat;
-                pathLng[2] = ex3Lng;  //ex3
-                pathLat[3] = ex2Lat;
-                pathLng[3] = ex3Lng;  //ex6
-                pathLat[4] = ex3Lat;
-                pathLng[4] = ex3Lng;  //ex9
-                pathLat[5] = ex3Lat;
-                pathLng[5] = ex2Lng;  //ex8
-                pathLat[6] = ex3Lat;
-                pathLng[6] = exLng;   //ex7
-                pathLat[7] = ex2Lat;
-                pathLng[7] = exLng;   //ex4
-                pathLat[8] = exLat;
-                pathLng[8] = exLng;   //ex1
+                pathLat[0] = ex2Lat;
+                pathLng[0] = ex7Lng;  //ex8
+                pathLat[1] = ex4Lat;
+                pathLng[1] = ex7Lng;  //ex9
+                pathLat[2] = ex5Lat;
+                pathLng[2] = ex6Lng;  //ex6
+                pathLat[3] = ex5Lat;
+                pathLng[3] = ex5Lng;  //ex3
+                pathLat[4] = ex4Lat;
+                pathLng[4] = exLng;  //ex2
+                pathLat[5] = exLat;
+                pathLng[5] = exLng;   //ex1
+                pathLat[6] = ex2Lat;
+                pathLng[6] = exLng;   //ex4
+                pathLat[7] = ex3Lat;
+                pathLng[7] = ex2Lng;   //ex7
+                pathLat[8] = ex3Lat;
+                pathLng[8] = ex3Lng;  //ex8
+                pathLat[9] = ex2Lat;
+                pathLng[9] = ex4Lng;  //ex9
+                pathLat[10] = ex4Lat;
+                pathLng[10] = ex4Lng;  //ex6
+                pathLat[11] = ex5Lat;
+                pathLng[11] = ex3Lng;  //ex3
+                pathLat[12] = ex5Lat;
+                pathLng[12] = ex2Lng;  //ex2
+                pathLat[13] = ex4Lat;
+                pathLng[13] = exLng;   //ex1
+                pathLat[14] = ex2Lat;
+                pathLng[14] = exLng;   //ex1
+                pathLat[15] = ex3Lat;
+                pathLng[15] = ex5Lng;   //ex4
+                pathLat[16] = ex3Lat;
+                pathLng[16] = ex6Lng;   //ex7
+                pathLat[17] = ex2Lat;
+                pathLng[17] = ex7Lng;  //ex8
                 break;
-
+/*
             case 4:
                 pathLat[0] = exLat;
                 pathLng[0] = exLng;   //ex1
@@ -621,7 +657,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 pathLng[8] = exLng;   //ex1
                 break;
 
-            /*case 5:
+            case 5:
                 pathLat[0] = exLat;
                 pathLng[0] = exLng;   //ex1
                 pathLat[1] = ex2Lat - addLat;
