@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.zip.DeflaterInputStream;
 
 import static android.hardware.SensorManager.SENSOR_DELAY_NORMAL;
 
@@ -136,6 +137,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     int startCount = 0;
 
+    int Deg = 0;
+    int DegOffSet = 0;
+
     //タイマー関連
     private Timer mainTimer;
     private MainTimerTask mainTimerTask = null;
@@ -154,6 +158,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public SensorManager sensorManager;
     Sensor s1, s2;
     sensorChangeEvent sensorChangeEvent;
+
 
     //保存用
     int val = 30000;
@@ -219,7 +224,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         for (BluetoothDevice device : devices) {
             //string型の固定値の比較.equals(string)
             //ペアリング用　盲導盤の回路に搭載されてるbluetoothモジュール参照
-            String DEVICE_NAME = "SBDBT-001bdc087049";
+            //String DEVICE_NAME = "SBDBT-001bdc087049";
+            String DEVICE_NAME = "SBDBT-001bdc08c1e0";
             if (device.getName().equals(DEVICE_NAME)) {
 
                 bluetoothState.setText(device.getName());
@@ -407,6 +413,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     bluetoothState.setText(R.string.connected);
                     mmOutputStream.write("START#".getBytes());
                     connectFlg = true;
+                    DegOffSet = (int) sensorChangeEvent.Deg;
+                    if(DegOffSet < 0){
+                        DegOffSet = DegOffSet + 360;
+                    }
+                    DegOffSet = DegOffSet / 2;
+                    mmOutputStream.write(DegOffSet);
+                    DegOffSet = DegOffSet*2;
+                    if(DegOffSet > 180){
+                        DegOffSet = DegOffSet -360;
+                    }
                 } catch (Exception e) {
                     bluetoothState.setText((CharSequence) e);
                     try {
@@ -415,7 +431,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         connectFlg = false;
                     }
                 }
+
             }
+
         }
 
         private void save() {
@@ -481,11 +499,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }*/
             experiment_mode(mode);  //各モードでのルート設定
             marker();
+            //compass();
             //計測＆誘導開始
             Toast.makeText(MapsActivity.this, "Start measurement.", Toast.LENGTH_SHORT).show();
             mainTimer = new Timer();
             mainTimerTask = new MainTimerTask();
             mainTimer.schedule(mainTimerTask, 0, (int) dt);    //1000[ms]間隔
+            output = "0";
         }
 
         private void stop() {
@@ -784,18 +804,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void run() {
             timerHandler.post(new Runnable() {
                 public void run() {
+                    if (connectFlg) {
+                        try {
+                            Deg = mmInStream.read()*2;//6軸センサによる方位測定
+                            if(Deg > 180){
+                                Deg = Deg -360;
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                     //次の座標までの距離計算　results[0]…2点間の距離
                     Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results);
-
                     //次の座標までの角度計算　results[1]…2点間の角度
-                    target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                    //target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                    target_deg = (int) results[1] - Deg; //6軸センサによる方位算出
                     if (target_deg > 180) target_deg = target_deg - 360;
                     else if (target_deg < -180) target_deg = target_deg + 360;
 
                     //テキスト表示
                     targetPoint.setText("targetLat:" + String.format("%, 6f", pathLat[path_val])
                             + "\n" + "targetLng:" + String.format("%, 6f", pathLng[path_val]));
-                    status.setText("次の座標まで" + results[0] + "[m]   角度" + target_deg + "[deg]");
+                    status.setText("次の座標まで" + results[0] + "[m]   角度" + target_deg + "[deg]"
+                            + Deg + "  " +sensorChangeEvent.Deg+ "  " +DegOffSet + "  " + Deg);
 
                     //現在位置と目標位置との距離が2[m]以下になったら目標を次の地点へ切り替える
                     if (results[0] < 2.0) {
@@ -845,7 +876,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 output = direction;
                                 try {
                                     mSocket.connect();
-                                    mmInStream = mSocket.getInputStream();
+                                   mmInStream = mSocket.getInputStream();
                                     mmOutputStream = mSocket.getOutputStream();
                                     mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
                                 } catch (IOException e) {
@@ -856,8 +887,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             if(startCount == 0){
                                 output = "0";
                                 try {
-                                    mSocket.connect();
-                                    mmInStream = mSocket.getInputStream();
+                                   mSocket.connect();
+                                   mmInStream = mSocket.getInputStream();
                                     mmOutputStream = mSocket.getOutputStream();
                                     mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
                                 } catch (IOException e) {
