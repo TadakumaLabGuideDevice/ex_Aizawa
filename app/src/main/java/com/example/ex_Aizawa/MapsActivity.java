@@ -438,8 +438,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         private void save() {
             time_count = 0;
-            //内部ストレージにtxtファイル作成
+            // [デバイス・ファイル・エクスプローラー]/date/date/[アプリ名]/filesで確認可
             String getNowDate = GetNowDate();
+            //String path = getFilesDir()+"/" + getNowDate +".txt";
+            //String[] paths = {getFilesDir()+"/" + getNowDate + ".txt"};
+            // [デバイス・ファイル・エクスプローラー]/sdcard/Android/data/[アプリ名]/files/documentsで確認可
+            //andoroid実機では　設定/ストレージ/ファイルから上と同じように確認可能
             String path = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate +".txt";
             String[] paths = {getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate + ".txt"};
             String[] mimeTypes = {"text/plain"};
@@ -451,7 +455,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
 
                 //実際に歩いた緯度経度を記録------------------------------------------------------------------------------------------------
-                text = 0 + "\t" + (String.format("%.8f",exLng)) + "\t" + "\t" + (String.format("%.8f",exLat));
+                text = 0 + "\t" + (String.format("%.8f",exLng)) + "\t" + "\t" + (String.format("%.8f",exLat) +"0");
                 bufferedWriter.write(text);
                 bufferedWriter.newLine();
                 text = 0 + "\t" + (String.format("%.8f",ex2Lng)) + "\t" + "\t" + (String.format("%.8f",ex2Lat));
@@ -513,9 +517,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 startCount = 0;
                 currentLat = pathLat[path_val];
                 currentLng = pathLng[path_val];
-                //mainTimer.cancel();
-                //mainTimer = null;
-                //mainTimerTask = null;
+                mainTimer = new Timer();
+                mainTimer.cancel();
+                mainTimer = null;
+                mainTimerTask = null;
             }
         }
 
@@ -804,7 +809,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void run() {
             timerHandler.post(new Runnable() {
                 public void run() {
-                    if (connectFlg) {
+                    if (connectFlg && startCount == 1) {
                         try {
                             Deg = mmInStream.read()*2;//6軸センサによる方位測定
                             if(Deg > 180){
