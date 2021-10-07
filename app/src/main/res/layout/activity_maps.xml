@@ -53,7 +53,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignTop="@+id/start_bt"
-        android:layout_marginStart="5dp"
+        android:layout_marginStart="6dp"
         android:layout_marginTop="0dp"
         android:layout_toEndOf="@+id/start_bt"
         android:text="@string/stop" />
@@ -163,7 +163,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/textView3"
         android:layout_alignStart="@+id/textView3"
-        android:layout_marginStart="0dp"
+        android:layout_marginStart="-1dp"
         android:layout_marginTop="5dp"
         android:text="@string/status"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
@@ -177,5 +177,45 @@
         android:layout_marginTop="0dp"
         android:layout_toEndOf="@+id/textView5"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+
+    <Button
+        android:id="@+id/up_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/start_bt"
+        android:layout_marginStart="66dp"
+        android:layout_marginTop="87dp"
+        android:layout_toEndOf="@+id/start_bt"
+        android:text="up" />
+
+    <Button
+        android:id="@+id/down_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/start_bt"
+        android:layout_marginStart="66dp"
+        android:layout_marginTop="198dp"
+        android:layout_toEndOf="@+id/start_bt"
+        android:text="down" />
+
+    <Button
+        android:id="@+id/right_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/start_bt"
+        android:layout_marginStart="127dp"
+        android:layout_marginTop="143dp"
+        android:layout_toEndOf="@+id/start_bt"
+        android:text="right" />
+
+    <Button
+        android:id="@+id/left_bt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/start_bt"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="143dp"
+        android:layout_toEndOf="@+id/start_bt"
+        android:text="left" />
 
 </RelativeLayout>

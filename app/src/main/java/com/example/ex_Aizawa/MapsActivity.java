@@ -89,12 +89,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Button startBt;
     private Button stopBt;
     private Button modeBt;
+    private Button upBt;
+    private Button downBt;
+    private Button rightBt;
+    private Button leftBt;
 
     double currentLat;
     double currentLng;
 
+    double FcurrentLat = 37.90106444;//シミュレーション用
+    double FcurrentLng = 140.1054401;
+
     //実験用緯度経度座標
     public static MarkerOptions options;
+    double startLat;                 //案内開始時のスタート緯度　
+    double startLng;                 //案内開始時のスタート経度
     double exLat = 37.901064444656;  //ex1の緯度
     double exLng = 140.105440123665;  //ex1の経度
     double addLat = 0.00004505;  //5[m]分の移動量(緯度換算)
@@ -130,14 +139,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     LatLng ex16 = new LatLng(ex5Lat, ex5Lng);
     LatLng ex17 = new LatLng(ex4Lat, exLng);
 
-    int path_val = 18;
+    LatLng guidePoint;
+
+    private float[] results = new float[3];
+    private float[] results1 = new float[3];
+    private float[] results2 = new float[3];
+    private float[] results3 = new float[3];
+    private float[] results4 = new float[3];
+    private float[] results5 = new float[3];//GPSによる2点間の距離，角度
+    int waypointDeg;
+    double maxDistance = 1.75;
+    double objectDistance;
+    double closestDistance;
+    double guideDistance;
+
+    int path_val = 19;
     int mode = 1;
-    double[] pathLat = new double[18];
-    double[] pathLng = new double[18];
+    double[] pathLat = new double[19];
+    double[] pathLng = new double[19];
 
     int startCount = 0;
 
-    int Deg = 0;
+    int MDeg = 0;
+    int SDeg = 0;
     int DegOffSet = 0;
 
     //タイマー関連
@@ -164,11 +188,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     int val = 30000;
     double[] array1 = new double[val];
     double[] array2 = new double[val];
+    double[] array3 = new double[val];
+    double[] array4 = new double[val];
+    double[] array5 = new double[val];
+    double[] array6 = new double[val];
+    double[] array7 = new double[val];
+    double[] array8 = new double[val];
     double time_count = 0;
     String text;
     int measure_val = 0;
 
-    private float[] results = new float[3];    //GPSによる2点間の距離や角度
     private int target_deg;                     //誘導の際の目標角度
 
     @Override
@@ -183,6 +212,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         targetPoint = findViewById(R.id.target);
         currentPoint = findViewById(R.id.now);
         status = (findViewById(R.id.status));
+        status.setBackgroundColor(0xffffffff);
         Mag = findViewById(R.id.mag);
 
         //ボタン初期化
@@ -200,6 +230,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         modeBt = findViewById(R.id.mode_bt);
         modeBt.setOnClickListener(new ClickEvent());
+
+        upBt = findViewById(R.id.up_bt);
+        upBt.setOnClickListener(new ClickEvent());
+
+        downBt = findViewById(R.id.down_bt);
+        downBt.setOnClickListener(new ClickEvent());
+
+        rightBt = findViewById(R.id.right_bt);
+        rightBt.setOnClickListener(new ClickEvent());
+
+        leftBt = findViewById(R.id.left_bt);
+        leftBt.setOnClickListener(new ClickEvent());
 
 
         //GPS関係
@@ -383,6 +425,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    public static LatLng computeOffset(LatLng from, double distance, double heading) {
+        distance /= 6371009.0D;  //earth_radius = 6371009 # in meters
+        heading = Math.toRadians(heading);
+        double fromLat = Math.toRadians(from.latitude);
+        double fromLng = Math.toRadians(from.longitude);
+        double cosDistance = Math.cos(distance);
+        double sinDistance = Math.sin(distance);
+        double sinFromLat = Math.sin(fromLat);
+        double cosFromLat = Math.cos(fromLat);
+        double sinLat = cosDistance * sinFromLat + sinDistance * cosFromLat * Math.cos(heading);
+        double dLng = Math.atan2(sinDistance * cosFromLat * Math.sin(heading), cosDistance - sinFromLat * sinLat);
+        return new LatLng(Math.toDegrees(Math.asin(sinLat)), Math.toDegrees(fromLng + dLng));
+    }
+
     /*public void onLocationChanged(Location location) {
         currentLat = location.getLatitude();
         currentLng = location.getLongitude();
@@ -399,6 +455,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             else if (v.equals(startBt)) start();  //誘導開始用ボタン
             else if (v.equals(stopBt)) stop();    //誘導強制終了用ボタン
             else if (v.equals(modeBt)) mode();  //音声入力用ボタン
+            else if (v.equals(upBt)) up();
+            else if (v.equals(downBt)) down();
+            else if (v.equals(rightBt)) right();
+            else if (v.equals(leftBt)) left();
         }
 
 
@@ -455,21 +515,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
 
                 //実際に歩いた緯度経度を記録------------------------------------------------------------------------------------------------
-                text = 0 + "\t" + (String.format("%.8f",exLng)) + "\t" + "\t" + (String.format("%.8f",exLat) +"0");
+/*                text = 0 + "\t" + (String.format("%.8f",exLng)) +  "\t" + (String.format("%.8f",exLat));
                 bufferedWriter.write(text);
                 bufferedWriter.newLine();
-                text = 0 + "\t" + (String.format("%.8f",ex2Lng)) + "\t" + "\t" + (String.format("%.8f",ex2Lat));
+                text = 0 + "\t" + (String.format("%.8f",ex2Lng)) + "\t" + (String.format("%.8f",ex2Lat));
                 bufferedWriter.write(text);
                 bufferedWriter.newLine();
-                text = 0 + "\t" + (String.format("%.8f",ex3Lng)) + "\t" + "\t" + (String.format("%.8f",ex3Lat));
+                text = 0 + "\t" + (String.format("%.8f",ex3Lng)) + "\t" + (String.format("%.8f",ex3Lat));
                 bufferedWriter.write(text);
                 bufferedWriter.newLine();
                 text = ("---------------------------------------------------------------------------");
                 bufferedWriter.write(text);
                 bufferedWriter.newLine();
-
+*/
+                text = "time" + "\t" + "mode" + "\t" + "Lng" + "\t" + "Lat" + "\t"  + "MoudobanDeg" + "\t"  + "SmartPhoneDeg" + "\t" + "TargetDeg"+ "\t" + "TargetLng"+ "\t" + "TargetLat";
+                bufferedWriter.write(text);
+                bufferedWriter.newLine();
                 for (int storage_val = 0; storage_val < measure_val; storage_val++) {
-                    text = (time_count/1000 + "\t" + (String.format("%.8f",array2[storage_val])) + "\t" + "\t" + (String.format("%.8f",array1[storage_val])));
+                    text = time_count/1000 + "\t" + array6[storage_val] + "\t" + (String.format("%.6f",array2[storage_val])) + "\t" + (String.format("%.6f",array1[storage_val]))
+                            + "\t" + (String.format("%.0f",array3[storage_val]))+ "\t" + (String.format("%.0f",array4[storage_val]))+ "\t" + (String.format("%.0f",array5[storage_val]))
+                            + "\t" + (String.format("%.6f",array7[storage_val]))+ "\t" + (String.format("%.6f",array8[storage_val]));
                     bufferedWriter.write(text);
                     bufferedWriter.newLine();
                     time_count += dt;
@@ -497,6 +562,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.clear();
             path_val = 0;
             measure_val = 0;
+            startLat = currentLat;    //現在地
+            startLng = currentLng;
             /*if (currentLat != 0 && currentLng != 0) {
                 exLat = currentLat;
                 exLng = currentLng;
@@ -510,6 +577,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mainTimerTask = new MainTimerTask();
             mainTimer.schedule(mainTimerTask, 0, (int) dt);    //1000[ms]間隔
             output = "0";
+
+            FcurrentLat = 37.901064444656;
+            FcurrentLng = 140.105440123665;
         }
 
         private void stop() {
@@ -529,6 +599,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             else mode++;
             status.setText("実験モード" + mode + "に変更");
         }
+
+        private void up() {
+            FcurrentLat = FcurrentLat + addLat/10;
+        }
+
+        private void down() {
+            FcurrentLat = FcurrentLat - addLat/10;
+        }
+
+        private void right() {
+            FcurrentLng = FcurrentLng + addLng/10;
+        }
+
+        private void left() {
+            FcurrentLng = FcurrentLng - addLng/10;
+        }
+
     }
 
     //各モードでのルート設定
@@ -584,6 +671,45 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 break;
 
             case 2:
+                pathLat[0] = exLat;
+                pathLng[0] = exLng;   //ex1
+                pathLat[1] = ex2Lat;
+                pathLng[1] = exLng;   //ex4
+                pathLat[2] = ex3Lat;
+                pathLng[2] = ex2Lng;   //ex7
+                pathLat[3] = ex3Lat;
+                pathLng[3] = ex3Lng;  //ex8
+                pathLat[4] = ex2Lat;
+                pathLng[4] = ex4Lng;  //ex9
+                pathLat[5] = ex4Lat;
+                pathLng[5] = ex4Lng;  //ex6
+                pathLat[6] = ex5Lat;
+                pathLng[6] = ex3Lng;  //ex3
+                pathLat[7] = ex5Lat;
+                pathLng[7] = ex2Lng;  //ex2
+                pathLat[8] = ex4Lat;
+                pathLng[8] = exLng;   //ex1
+                pathLat[9] = ex2Lat;
+                pathLng[9] = exLng;   //ex1
+                pathLat[10] = ex3Lat;
+                pathLng[10] = ex5Lng;   //ex4
+                pathLat[11] = ex3Lat;
+                pathLng[11] = ex6Lng;   //ex7
+                pathLat[12] = ex2Lat;
+                pathLng[12] = ex7Lng;  //ex8
+                pathLat[13] = ex4Lat;
+                pathLng[13] = ex7Lng;  //ex9
+                pathLat[14] = ex5Lat;
+                pathLng[14] = ex6Lng;  //ex6
+                pathLat[15] = ex5Lat;
+                pathLng[15] = ex5Lng;  //ex3
+                pathLat[16] = ex4Lat;
+                pathLng[16] = exLng;  //ex2
+                pathLat[17] = exLat;
+                pathLng[17] = exLng;   //ex1
+                break;
+
+/*            case 2:
                 pathLat[0] = ex2Lat;
                 pathLng[0] = ex4Lng;  //ex9
                 pathLat[1] = ex4Lat;
@@ -660,7 +786,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 pathLat[17] = ex2Lat;
                 pathLng[17] = ex7Lng;  //ex8
                 break;
-/*
+
             case 4:
                 pathLat[0] = exLat;
                 pathLng[0] = exLng;   //ex1
@@ -811,107 +937,203 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 public void run() {
                     if (connectFlg && startCount == 1) {
                         try {
-                            Deg = mmInStream.read()*2;//6軸センサによる方位測定
-                            if(Deg > 180){
-                                Deg = Deg -360;
+                            MDeg = mmInStream.read() * 2;//6軸センサによる方位測定
+                            if (MDeg > 180) {
+                                MDeg = MDeg - 360;
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
-                    //次の座標までの距離計算　results[0]…2点間の距離
-                    Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results);
-                    //次の座標までの角度計算　results[1]…2点間の角度
-                    //target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
-                    target_deg = (int) results[1] - Deg; //6軸センサによる方位算出
-                    if (target_deg > 180) target_deg = target_deg - 360;
-                    else if (target_deg < -180) target_deg = target_deg + 360;
 
-                    //テキスト表示
-                    targetPoint.setText("targetLat:" + String.format("%, 6f", pathLat[path_val])
-                            + "\n" + "targetLng:" + String.format("%, 6f", pathLng[path_val]));
-                    status.setText("次の座標まで" + results[0] + "[m]   角度" + target_deg + "[deg]"
-                            + Deg + "  " +sensorChangeEvent.Deg+ "  " +DegOffSet + "  " + Deg);
+                    SDeg = (int) sensorChangeEvent.Deg;
 
-                    //現在位置と目標位置との距離が2[m]以下になったら目標を次の地点へ切り替える
-                    if (results[0] < 2.0) {
-                        //bluetoothで盲導盤に誘導方向の指令を送る
-                        if (connectFlg) {
-                            try {
-                                mmOutputStream.write("6".getBytes());  //6は盲導盤で↓に動く指令
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
+                    //最終座標に着いたら終了
+                    if (path_val == 17) {
+                        //次の座標までの距離計算　results[0]…2点間の距離
+                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results);
+                        //次の座標までの角度計算　results[1]…2点間の角度
+                        if(mode == 1)target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                        if(mode == 2)target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
+                        if (target_deg > 180) target_deg = target_deg - 360;
+                        else if (target_deg < -180) target_deg = target_deg + 360;
 
-                        LatLng position = new LatLng(pathLat[path_val], pathLng[path_val]);
-                        options.position(position);
-                        BitmapDescriptor icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN);
-                        options.icon(icon);
-                        mMap.addMarker(options);
-                        path_val++; //次の座標の更新
+                        //テキスト表示
+                        targetPoint.setText("targetLat:" + String.format("%, 6f", pathLat[path_val])
+                                + "\n" + "targetLng:" + String.format("%, 6f", pathLng[path_val]));
+                        status.setText(/*"次の座標まで" + results[0] + "[m]   角度" + target_deg + "[deg]"
+                                + */ "盲導盤角度" + MDeg + "°　　スマホ角度" + sensorChangeEvent.Deg + "°　　初期角度" + DegOffSet);
 
-                        //最終座標に着いたら終了
-                        if (path_val == 18) {
-                            Toast.makeText(MapsActivity.this, "FINISH!!", Toast.LENGTH_SHORT).show();
-
+                        if (results[0] < 2.0) {
+                            Toast toast = Toast.makeText(getApplicationContext(), "FINISH!!", Toast.LENGTH_SHORT);
+                            toast.show();
+                            //盲導盤に停止の合図
                             if (connectFlg) {
                                 try {
-                                    mmOutputStream.write("7".getBytes());  //123456以外の数字送ると止まる
+                                    mmOutputStream.write("0".getBytes());  //123456以外の数字送ると止まる
+                                    startCount = 0;
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
                             }
+                            //計測終了
                             if (null != mainTimer) {
                                 mainTimer.cancel();
                                 mainTimer = null;
                                 mainTimerTask = null;
                             }
-                        }
-                    } else {
-                        //bluetoothで盲導盤に誘導方向の指令を送る
-                        if (connectFlg) {
-                            String direction = null;
-                            if (target_deg < -45) direction = "1";  //左
-                            else if (-45 <= target_deg && target_deg < -10) direction = "2";  //左上
-                            else if (-10 <= target_deg && target_deg <= 10) direction = "3";  //上
-                            else if (10 < target_deg && target_deg <= 45) direction = "4";  //右上
-                            else if (45 < target_deg) direction = "5";  //右
-                            if (/*!direction.equals(output)&& */startCount == 1) {
-                                output = direction;
-                                try {
-                                    mSocket.connect();
-                                   mmInStream = mSocket.getInputStream();
-                                    mmOutputStream = mSocket.getOutputStream();
-                                    mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
-
-                            if(startCount == 0){
-                                output = "0";
-                                try {
-                                   mSocket.connect();
-                                   mmInStream = mSocket.getInputStream();
-                                    mmOutputStream = mSocket.getOutputStream();
-                                    mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            }
+                        } else {
+                            if (connectFlg) outputToDevice(target_deg);
                         }
                     }
 
-                    //保存用
-                    array1[measure_val] = currentLat;
-                    array2[measure_val] = currentLng;
-                    measure_val++;
+                    else if (path_val == 0) {
+                        Location.distanceBetween(currentLat, currentLng, startLat, startLng, results1);
+                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results2);
+                        Location.distanceBetween(startLat, startLng, pathLat[path_val], pathLng[path_val], results3);
+                        Location.distanceBetween(startLat, startLng, currentLat, currentLng, results4);
+                        waypointDeg = Math.abs((int) results3[1] - (int) results4[1]);
+                        if (waypointDeg > 180) waypointDeg = 360 - waypointDeg;
+                        objectDistance = results1[0] * Math.sin(Math.toRadians(waypointDeg));//被験者から経路までの距離
+                        closestDistance = results1[0] * Math.cos(Math.toRadians(waypointDeg));//前のWaypointから最近点までの距離
+                        //前のWaypointから誘導点までの距離
+                        if (objectDistance <= maxDistance) {
+                            guideDistance = closestDistance + (maxDistance - objectDistance);
+                        } else
+                            guideDistance = closestDistance;
+                        if (guideDistance > results3[0]) {
+                            guideDistance = results3[0];
+
+                        }
+                        guidePoint = computeOffset(new LatLng(startLat, startLng), guideDistance, results3[1]);//誘導点の座標
+
+                        Location.distanceBetween(currentLat, currentLng, guidePoint.latitude, guidePoint.longitude, results);
+                        if(mode == 1)target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                        if(mode == 2)target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
+
+                        if (target_deg > 180) {
+                            target_deg = target_deg - 360;
+                        } else if (target_deg < -180) {
+                            target_deg = target_deg + 360;
+                        }
+
+                        LatLng current_pos = new LatLng(currentLat, currentLng);
+                        ArrayList<LatLng> current_points1 = new ArrayList<>();
+                        current_points1.clear();
+                        current_points1.add(current_pos);
+                        current_points1.add(guidePoint);
+                        PolylineOptions straight = new PolylineOptions().addAll(current_points1)
+                                .geodesic(false)  // 直線
+                                .color(Color.GREEN)
+                                .width(3);
+                        mMap.addPolyline(straight);
+
+
+                        LatLng closestPoint = computeOffset(new LatLng(startLat, startLng), closestDistance, results3[1]);//最近点の座標
+                        Location.distanceBetween(pathLat[path_val], pathLng[path_val], closestPoint.latitude, closestPoint.longitude, results5);//最近点からWaypointまでの距離
+
+                        //最近点と目標マーカーとの距離が0.75[m]以下になったら目標を次のマーカーへ切り替える
+                        if (results5[0] < 0.75) {
+                            LatLng position = new LatLng(pathLat[path_val], pathLng[path_val]);
+                            options.position(position);          //更新したマーカーは緑に
+                            BitmapDescriptor icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN);
+                            options.icon(icon);
+                            mMap.addMarker(options);
+                            path_val++;  //次のマーカーの更新
+                        } else {
+                            if (connectFlg) outputToDevice(target_deg);
+                        }
+                        targetPoint.setText("targetLat:" + String.format("%, 6f", pathLat[path_val])
+                                + "\n" + "targetLng:" + String.format("%, 6f", pathLng[path_val]));
+                        status.setText(/*"次の座標まで" + results[0] + "[m]   角度" + target_deg + "[deg]"
+                                + */ "盲導盤角度" + MDeg + "°　　スマホ角度" + sensorChangeEvent.Deg + "°　　初期角度" + DegOffSet);
+                    }
+
+                    else {
+                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val - 1], pathLng[path_val - 1], results1);
+                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results2);
+                        Location.distanceBetween(pathLat[path_val - 1], pathLng[path_val - 1], pathLat[path_val], pathLng[path_val], results3);
+                        Location.distanceBetween(pathLat[path_val - 1], pathLng[path_val - 1], currentLat, currentLng, results4);
+                        waypointDeg = Math.abs((int) results3[1] - (int) results4[1]);
+                        if (waypointDeg > 180) waypointDeg = 360 - waypointDeg;
+                        objectDistance = results1[0] * Math.sin(Math.toRadians(waypointDeg));//被験者から経路までの距離
+                        closestDistance = results1[0] * Math.cos(Math.toRadians(waypointDeg));//前のWaypointから最近点までの距離
+                        //前のWaypointから誘導点までの距離
+                        if (objectDistance <= maxDistance) {
+                            guideDistance = closestDistance + (maxDistance - objectDistance);
+                        } else
+                            guideDistance = closestDistance;
+                        if (guideDistance > results3[0]) {
+                            guideDistance = results3[0];
+
+                        }
+                        guidePoint = computeOffset(new LatLng(pathLat[path_val - 1], pathLng[path_val - 1]), guideDistance, results3[1]);//誘導点の座標
+
+                        Location.distanceBetween(currentLat, currentLng, guidePoint.latitude, guidePoint.longitude, results);
+                        if(mode == 1)target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                        if(mode == 2)target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
+
+                        if (target_deg > 180) {
+                            target_deg = target_deg - 360;
+                        } else if (target_deg < -180) {
+                            target_deg = target_deg + 360;
+                        }
+
+                        LatLng current_pos = new LatLng(currentLat, currentLng);
+                        ArrayList<LatLng> current_points1 = new ArrayList<>();
+                        current_points1.clear();
+                        current_points1.add(current_pos);
+                        current_points1.add(guidePoint);
+                        PolylineOptions straight = new PolylineOptions().addAll(current_points1)
+                                .geodesic(false)  // 直線
+                                .color(Color.GREEN)
+                                .width(3);
+                        mMap.addPolyline(straight);
+
+
+                        LatLng closestPoint = computeOffset(new LatLng(pathLat[path_val - 1], pathLng[path_val - 1]), closestDistance, results3[1]);//最近点の座標
+                        Location.distanceBetween(pathLat[path_val], pathLng[path_val], closestPoint.latitude, closestPoint.longitude, results5);//最近点からWaypointまでの距離
+
+                        //最近点と目標マーカーとの距離が0.75[m]以下になったら目標を次のマーカーへ切り替える
+                        if (results5[0] < 0.75) {
+                            LatLng position = new LatLng(pathLat[path_val], pathLng[path_val]);
+                            options.position(position);          //更新したマーカーは緑に
+                            BitmapDescriptor icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN);
+                            options.icon(icon);
+                            mMap.addMarker(options);
+                            path_val++;  //次のマーカーの更新
+                        } else {
+                            if (connectFlg) outputToDevice(target_deg);
+                        }
+                        targetPoint.setText("targetLat:" + String.format("%, 6f", pathLat[path_val])
+                                + "\n" + "targetLng:" + String.format("%, 6f", pathLng[path_val]));
+                        status.setText(/*"次の座標まで" + results[0] + "[m]   角度" + target_deg + "[deg]"
+                                + */ "盲導盤角度" + MDeg + "°　　スマホ角度" + sensorChangeEvent.Deg + "°　　初期角度" + DegOffSet);
+                    }
+
+
+
+                    if(startCount == 1) {
+                        //保存用
+                        array1[measure_val] = currentLat;
+                        array2[measure_val] = currentLng;
+                        array3[measure_val] = MDeg;
+                        array4[measure_val] = SDeg;
+                        array5[measure_val] = target_deg;
+                        array6[measure_val] = mode;
+                        array7[measure_val] = guidePoint.longitude;
+                        array8[measure_val] = guidePoint.latitude;
+                        measure_val++;
+                    }
 
                     //軌跡描画
                     ArrayList<LatLng> current_points = null;
                     PolylineOptions current_lineOptions = null;
-                    for (int i = 0; i < 1; i++) {
+                        for(
+                    int i = 0;
+                    i< 1;i++)
+
+                    {
                         current_points = new ArrayList<LatLng>();
                         current_lineOptions = new PolylineOptions();
                         for (int drow_val = 0; drow_val < measure_val; drow_val++) {
@@ -924,11 +1146,44 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         current_lineOptions.width(5);
                         current_lineOptions.color(Color.RED);
                     }
-                    mMap.addPolyline(current_lineOptions);
+                        mMap.addPolyline(current_lineOptions);
                 }
             });
         }
     }
+
+    public void outputToDevice(int deg) {
+        String direction = null;
+        if (deg < -67.5) direction = "1";  //左旋回
+        else if (-67.5 <= deg && deg < -22.5) direction = "2";  //左前
+        else if (-22.5 <= deg && deg <= 22.5) direction = "3";  //前　
+        else if (22.5 < deg && deg <= 67.5) direction = "4";  //右前
+        else if (67.5 < deg) direction = "5";  //右旋回
+        if (/*!direction.equals(output)&& */startCount == 1) {
+            output = direction;
+            try {
+                mSocket.connect();
+                mmInStream = mSocket.getInputStream();
+                mmOutputStream = mSocket.getOutputStream();
+                mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if(startCount == 0){
+            output = "0";
+            try {
+                mSocket.connect();
+                mmInStream = mSocket.getInputStream();
+                mmOutputStream = mSocket.getOutputStream();
+                mmOutputStream.write(output.getBytes()); //arduino側はchar v で受け取る
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     //GPSのプロバイダ関連のイベント
     //@Override ここの対処必要　LocationListenerのせいで消せない　使わないと思うけど
