@@ -1030,7 +1030,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             timerHandler.post(new Runnable() {
                 public void run() {
                     if (connectFlg && startCount == 1) {
-                        try {//2回に一回しかできてない．．．
+                        try {//2回に一回しかできてない．．
                             MDeg = mmInStream.read() * 2;//6軸センサによる方位測定
                             if (MDeg > 180) {
                                 MDeg = MDeg - 360;
