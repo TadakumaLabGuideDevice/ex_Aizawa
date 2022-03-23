@@ -89,7 +89,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Button startBt;
     private Button stopBt;
     private Button modeBt;
-    private Button upBt;
+    private Button upBt;   //シミュレーション用
     private Button downBt;
     private Button rightBt;
     private Button leftBt;
@@ -106,10 +106,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     double startLng;                 //案内開始時のスタート経度
     double exLat = 37.901064444656;  //ex1の緯度
     double exLng = 140.105440123665;  //ex1の経度
-    double addLat = 0.00004505;  //5[m]分の移動量(緯度換算)
-    double addLng = 0.00005685;  //5[m]分の移動量(経度換算)
-    //double addLat = 0.00001802;  //2[m]分の移動量(緯度換算)
-    //double addLng = 0.00002274;  //2[m]分の移動量(経度換算)
+    double addLat = 0.00001802;  //2[m]分の移動量(緯度換算)
+    double addLng = 0.00002274;  //2[m]分の移動量(経度換算)
     double ex2Lat = exLat + addLat/5;
     double ex3Lat = exLat + addLat/2;
     double ex4Lat = exLat - addLat/5;
@@ -146,23 +144,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private float[] results2 = new float[3];
     private float[] results3 = new float[3];
     private float[] results4 = new float[3];
-    private float[] results5 = new float[3];//GPSによる2点間の距離，角度
+    private float[] results5 = new float[3];
     int waypointDeg;
-    double maxDistance = 1.75;
+    double maxDistance = 1.75;  //誘導方法の式のCに当たる部分
     double objectDistance;
     double closestDistance;
     double guideDistance;
 
     int path_val = 19;
+    int Max_path_val = 0;
     int mode = 1;
     double[] pathLat = new double[19];
     double[] pathLng = new double[19];
 
     int startCount = 0;
 
-    int MDeg = 0;
-    int SDeg = 0;
-    int DegOffSet = 0;
+    int MDeg = 0;  //盲導盤内蔵6軸センサBNO055による利用者角度
+    int SDeg = 0;  //スマートフォン内蔵地磁気センサによる利用者角度
+    int DegOffSet = 0;  //盲導盤のconnect時の角度
+    int countdeg = 0;
 
     //タイマー関連
     private Timer mainTimer;
@@ -447,6 +447,132 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //String Lng = "currentLng" + currentLng;
     }*/
 
+    private void save() {
+        time_count = 0;
+        // [デバイス・ファイル・エクスプローラー]/date/date/[アプリ名]/filesで確認可
+        String getNowDate = GetNowDate();
+        //String path = getFilesDir()+"/" + getNowDate +".txt";
+        //String[] paths = {getFilesDir()+"/" + getNowDate + ".txt"};
+        // [デバイス・ファイル・エクスプローラー]/sdcard/Android/data/[アプリ名]/files/documentsで確認可
+        //andoroid実機では　設定/ストレージ/ファイルから上と同じように確認可能
+        String path = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate +".txt";
+        String[] paths = {getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate + ".txt"};
+        String[] mimeTypes = {"text/plain"};
+
+        try{ //ここが変わった
+
+            FileOutputStream fileOutputStream = new FileOutputStream(path);
+            OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
+            BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
+
+            //実際に歩いた緯度経度を記録------------------------------------------------------------------------------------------------
+/*                text = 0 + "\t" + (String.format("%.8f",exLng)) +  "\t" + (String.format("%.8f",exLat));
+                bufferedWriter.write(text);
+                bufferedWriter.newLine();
+                text = 0 + "\t" + (String.format("%.8f",ex2Lng)) + "\t" + (String.format("%.8f",ex2Lat));
+                bufferedWriter.write(text);
+                bufferedWriter.newLine();
+                text = 0 + "\t" + (String.format("%.8f",ex3Lng)) + "\t" + (String.format("%.8f",ex3Lat));
+                bufferedWriter.write(text);
+                bufferedWriter.newLine();
+                text = ("---------------------------------------------------------------------------");
+                bufferedWriter.write(text);
+                bufferedWriter.newLine();
+*/
+            text = "time" + "\t" + "mode" + "\t" + "Lng" + "\t" + "Lat"
+                    + "\t"  + "SmartPhoneDeg" + "\t" + "TargetDeg"
+                    + "\t" + "error" + "\t" + "path" ;
+            bufferedWriter.write(text);
+            bufferedWriter.newLine();
+
+            int count=0;
+            double deg =0;
+            double dsum = 0;
+            int dover = 0;
+            double dmax = 0;
+            for (int storage_val = 0; storage_val < measure_val; storage_val++) {
+                //前半評価プログラム
+                double center1x = exLng - addLng/2;
+                double center1y = exLat;
+                double center2x = exLng + addLng/2;
+                double center2y = exLat;
+                double objectx = array2[storage_val];
+                double objecty = array1[storage_val];
+                double targetx = pathLng[count];
+                double targety = pathLat[count];
+                if(count == 0){
+                    targetx = pathLng[8];
+                    targety = pathLat[8];
+                }
+
+                if(count <= 8) {
+                    Location.distanceBetween(center1x, center1y, objectx, objecty, results1);
+                    Location.distanceBetween(center1x, center1y, targetx, targety,  results2);
+                    deg = results1[1] - results2[1];
+                }else{
+                    Location.distanceBetween(center2x, center2y, objectx, objecty, results1);
+                    Location.distanceBetween(center2x, center2y, targetx, targety, results2);
+                    deg = results2[1] - results1[1];
+                }
+                double dobject = results1[0];
+                if(deg < -180)deg = 360 + deg;
+
+                if(count != 8 && deg > 45){
+                    count++;
+                }else if(count == 8 && dobject*Math.sin(Math.toRadians(deg)) > results2[0]*Math.sin(Math.toRadians(45))){
+                    count++;
+                }
+                objectx = array2[storage_val];
+                objecty = array1[storage_val];
+                targetx = pathLng[count];
+                targety = pathLat[count];
+                if(count == 0){
+                    targetx = pathLng[8];
+                    targety = pathLat[8];
+                }
+                double nexttargetx = pathLng[count + 1];
+                double nexttargety = pathLat[count + 1];
+
+                Location.distanceBetween(targetx, targety, objectx, objecty, results3);
+                Location.distanceBetween(targetx, targety, nexttargetx, nexttargety, results4);
+                float wDeg = Math.abs(results4[1] - results3[1]);
+                if (wDeg > 180) wDeg = 360 - wDeg;
+                double d = results3[0] * Math.sin(Math.toRadians(wDeg));
+                dsum = dsum + d;
+
+                if(d >= 1){
+                    dover++;
+                }
+                if(d > dmax) {
+                    dmax = d;
+                }
+
+                text = time_count/1000 + "\t" + array6[storage_val] //+ "\t" + (String.format("%.6f",array2[storage_val])) + "\t" + (String.format("%.6f",array1[storage_val]))
+                        + "\t" + (String.format("%.0f",array3[storage_val])) + "\t" + (String.format("%.0f",array4[storage_val]))//+ "\t" + (String.format("%.0f",array5[storage_val]))
+                        + "\t" + String.format("%.6f",d)+ "\t" + count;
+                bufferedWriter.write(text);
+                bufferedWriter.newLine();
+                time_count += dt;
+            }
+            double daverage = dsum/measure_val;
+            text = "平均"+ daverage + "\t" + dover  + "\t" + dmax;
+            bufferedWriter.write(text);
+            bufferedWriter.newLine();
+
+
+            bufferedWriter.flush();
+            bufferedWriter.close();
+            Toast.makeText(MapsActivity.this, "Saved data.", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+
+        }
+        MediaScannerConnection.scanFile(getApplicationContext(), paths, mimeTypes, new MediaScannerConnection.OnScanCompletedListener() {
+            public void onScanCompleted(String path, Uri uri) {
+            }
+        });
+    }
+
     //クリックしたときのイベント
     class ClickEvent implements View.OnClickListener {
         public void onClick(View v) {
@@ -496,62 +622,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         }
 
-        private void save() {
-            time_count = 0;
-            // [デバイス・ファイル・エクスプローラー]/date/date/[アプリ名]/filesで確認可
-            String getNowDate = GetNowDate();
-            //String path = getFilesDir()+"/" + getNowDate +".txt";
-            //String[] paths = {getFilesDir()+"/" + getNowDate + ".txt"};
-            // [デバイス・ファイル・エクスプローラー]/sdcard/Android/data/[アプリ名]/files/documentsで確認可
-            //andoroid実機では　設定/ストレージ/ファイルから上と同じように確認可能
-            String path = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate +".txt";
-            String[] paths = {getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/" + getNowDate + ".txt"};
-            String[] mimeTypes = {"text/plain"};
-
-            try{ //ここが変わった
-
-                FileOutputStream fileOutputStream = new FileOutputStream(path);
-                OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
-                BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-                //実際に歩いた緯度経度を記録------------------------------------------------------------------------------------------------
-/*                text = 0 + "\t" + (String.format("%.8f",exLng)) +  "\t" + (String.format("%.8f",exLat));
-                bufferedWriter.write(text);
-                bufferedWriter.newLine();
-                text = 0 + "\t" + (String.format("%.8f",ex2Lng)) + "\t" + (String.format("%.8f",ex2Lat));
-                bufferedWriter.write(text);
-                bufferedWriter.newLine();
-                text = 0 + "\t" + (String.format("%.8f",ex3Lng)) + "\t" + (String.format("%.8f",ex3Lat));
-                bufferedWriter.write(text);
-                bufferedWriter.newLine();
-                text = ("---------------------------------------------------------------------------");
-                bufferedWriter.write(text);
-                bufferedWriter.newLine();
-*/
-                text = "time" + "\t" + "mode" + "\t" + "Lng" + "\t" + "Lat" + "\t"  + "MoudobanDeg" + "\t"  + "SmartPhoneDeg" + "\t" + "TargetDeg"+ "\t" + "TargetLng"+ "\t" + "TargetLat";
-                bufferedWriter.write(text);
-                bufferedWriter.newLine();
-                for (int storage_val = 0; storage_val < measure_val; storage_val++) {
-                    text = time_count/1000 + "\t" + array6[storage_val] + "\t" + (String.format("%.6f",array2[storage_val])) + "\t" + (String.format("%.6f",array1[storage_val]))
-                            + "\t" + (String.format("%.0f",array3[storage_val]))+ "\t" + (String.format("%.0f",array4[storage_val]))+ "\t" + (String.format("%.0f",array5[storage_val]))
-                            + "\t" + (String.format("%.6f",array7[storage_val]))+ "\t" + (String.format("%.6f",array8[storage_val]));
-                    bufferedWriter.write(text);
-                    bufferedWriter.newLine();
-                    time_count += dt;
-                }
-                bufferedWriter.flush();
-                bufferedWriter.close();
-                Toast.makeText(MapsActivity.this, "Saved data.", Toast.LENGTH_SHORT).show();
-            } catch (IOException e) {
-                e.printStackTrace();
-
-            }
-            MediaScannerConnection.scanFile(getApplicationContext(), paths, mimeTypes, new MediaScannerConnection.OnScanCompletedListener() {
-                public void onScanCompleted(String path, Uri uri) {
-                }
-            });
-        }
-
         private void start() {
             startCount = 1;
             if (null != mainTimer) {
@@ -562,8 +632,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.clear();
             path_val = 0;
             measure_val = 0;
-            startLat = currentLat;    //現在地
-            startLng = currentLng;
+            startLat = FcurrentLat;    //現在地
+            startLng = FcurrentLng;
             /*if (currentLat != 0 && currentLng != 0) {
                 exLat = currentLat;
                 exLng = currentLng;
@@ -578,15 +648,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mainTimer.schedule(mainTimerTask, 0, (int) dt);    //1000[ms]間隔
             output = "0";
 
-            FcurrentLat = 37.901064444656;
-            FcurrentLng = 140.105440123665;
+            currentLat = 37.901064444656;
+            currentLng = 140.105440123665;
         }
 
         private void stop() {
             if (null != mainTimer) {
                 startCount = 0;
-                currentLat = pathLat[path_val];
-                currentLng = pathLng[path_val];
+                FcurrentLat = pathLat[path_val];
+                FcurrentLng = pathLng[path_val];
                 mainTimer = new Timer();
                 mainTimer.cancel();
                 mainTimer = null;
@@ -595,7 +665,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         private void mode() {
-            if (mode == 3) mode = 1;
+            if (mode == 7) mode = 1;
             else mode++;
             status.setText("実験モード" + mode + "に変更");
         }
@@ -620,6 +690,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //各モードでのルート設定
     void experiment_mode(int mode) {
+        if(mode <= 3)
+        {
+            addLat = 0.00001802;  //2[m]分の移動量(緯度換算)
+            addLng = 0.00002277;  //2[m]分の移動量(経度換算)
+        }
+        if(mode > 3)
+        {
+            addLat = 0.00004505;  //5[m]分の移動量(緯度換算)
+            addLng = 0.00005693;  //5[m]分の移動量(経度換算)
+        }
         ex2Lat = exLat + addLat/5;
         ex3Lat = exLat + addLat/2;
         ex4Lat = exLat - addLat/5;
@@ -668,48 +748,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 pathLng[16] = exLng;  //ex2
                 pathLat[17] = exLat;
                 pathLng[17] = exLng;   //ex1
+                Max_path_val = 17;
                 break;
 
             case 2:
-                pathLat[0] = exLat;
-                pathLng[0] = exLng;   //ex1
-                pathLat[1] = ex2Lat;
-                pathLng[1] = exLng;   //ex4
-                pathLat[2] = ex3Lat;
-                pathLng[2] = ex2Lng;   //ex7
-                pathLat[3] = ex3Lat;
-                pathLng[3] = ex3Lng;  //ex8
-                pathLat[4] = ex2Lat;
-                pathLng[4] = ex4Lng;  //ex9
-                pathLat[5] = ex4Lat;
-                pathLng[5] = ex4Lng;  //ex6
-                pathLat[6] = ex5Lat;
-                pathLng[6] = ex3Lng;  //ex3
-                pathLat[7] = ex5Lat;
-                pathLng[7] = ex2Lng;  //ex2
-                pathLat[8] = ex4Lat;
-                pathLng[8] = exLng;   //ex1
-                pathLat[9] = ex2Lat;
-                pathLng[9] = exLng;   //ex1
-                pathLat[10] = ex3Lat;
-                pathLng[10] = ex5Lng;   //ex4
-                pathLat[11] = ex3Lat;
-                pathLng[11] = ex6Lng;   //ex7
-                pathLat[12] = ex2Lat;
-                pathLng[12] = ex7Lng;  //ex8
-                pathLat[13] = ex4Lat;
-                pathLng[13] = ex7Lng;  //ex9
-                pathLat[14] = ex5Lat;
-                pathLng[14] = ex6Lng;  //ex6
-                pathLat[15] = ex5Lat;
-                pathLng[15] = ex5Lng;  //ex3
-                pathLat[16] = ex4Lat;
-                pathLng[16] = exLng;  //ex2
-                pathLat[17] = exLat;
-                pathLng[17] = exLng;   //ex1
-                break;
-
-/*            case 2:
                 pathLat[0] = ex2Lat;
                 pathLng[0] = ex4Lng;  //ex9
                 pathLat[1] = ex4Lat;
@@ -746,6 +788,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 pathLng[16] = ex3Lng;  //ex8
                 pathLat[17] = ex2Lat;
                 pathLng[17] = ex4Lng;  //ex9
+                Max_path_val = 17;
                 break;
 
             case 3:
@@ -785,92 +828,143 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 pathLng[16] = ex6Lng;   //ex7
                 pathLat[17] = ex2Lat;
                 pathLng[17] = ex7Lng;  //ex8
+                Max_path_val = 17;
                 break;
 
             case 4:
                 pathLat[0] = exLat;
                 pathLng[0] = exLng;   //ex1
-                pathLat[1] = exLat;
-                pathLng[1] = ex2Lng;  //ex2
-                pathLat[2] = exLat;
-                pathLng[2] = ex3Lng;  //ex3
-                pathLat[3] = ex2Lat;
-                pathLng[3] = ex3Lng;  //ex6
-                pathLat[4] = ex3Lat;
-                pathLng[4] = ex3Lng;  //ex9
-                pathLat[5] = ex2Lat;
-                pathLng[5] = ex2Lng;  //ex5
-                pathLat[6] = exLat;
-                pathLng[6] = exLng;   //ex1
-                pathLat[7] = exLat;
-                pathLng[7] = exLng;   //ex1
-                pathLat[8] = exLat;
+                pathLat[1] = ex2Lat;
+                pathLng[1] = exLng;   //ex4
+                pathLat[2] = ex3Lat;
+                pathLng[2] = ex2Lng;   //ex7
+                pathLat[3] = ex3Lat;
+                pathLng[3] = ex3Lng;  //ex8
+                pathLat[4] = ex2Lat;
+                pathLng[4] = ex4Lng;  //ex9
+                pathLat[5] = ex4Lat;
+                pathLng[5] = ex4Lng;  //ex6
+                pathLat[6] = ex5Lat;
+                pathLng[6] = ex3Lng;  //ex3
+                pathLat[7] = ex5Lat;
+                pathLng[7] = ex2Lng;  //ex2
+                pathLat[8] = ex4Lat;
                 pathLng[8] = exLng;   //ex1
+                pathLat[9] = ex2Lat;
+                pathLng[9] = exLng;   //ex1
+                pathLat[10] = ex3Lat;
+                pathLng[10] = ex5Lng;   //ex4
+                pathLat[11] = ex3Lat;
+                pathLng[11] = ex6Lng;   //ex7
+                pathLat[12] = ex2Lat;
+                pathLng[12] = ex7Lng;  //ex8
+                pathLat[13] = ex4Lat;
+                pathLng[13] = ex7Lng;  //ex9
+                pathLat[14] = ex5Lat;
+                pathLng[14] = ex6Lng;  //ex6
+                pathLat[15] = ex5Lat;
+                pathLng[15] = ex5Lng;  //ex3
+                pathLat[16] = ex4Lat;
+                pathLng[16] = exLng;  //ex2
+                pathLat[17] = exLat;
+                pathLng[17] = exLng;   //ex1
+                Max_path_val = 17;
                 break;
 
             case 5:
-                pathLat[0] = exLat;
-                pathLng[0] = exLng;   //ex1
-                pathLat[1] = ex2Lat - addLat;
-                pathLng[1] = exLng;   //ex4
-                pathLat[2] = ex3Lat - addLat * 2.0;
-                pathLng[2] = exLng;   //ex7
-                pathLat[3] = ex3Lat - addLat * 2.0;
-                pathLng[3] = ex2Lng + addLng;  //ex8
-                pathLat[4] = ex3Lat - addLat * 2.0;
-                pathLng[4] = ex3Lng + addLng * 2.0;  //ex9
-                pathLat[5] = ex2Lat - addLat;
-                pathLng[5] = ex3Lng + addLng * 2.0;  //ex6
-                pathLat[6] = exLat;
-                pathLng[6] = ex3Lng + addLng * 2.0;  //ex3
-                pathLat[7] = exLat;
-                pathLng[7] = ex2Lng + addLng;  //ex2
-                pathLat[8] = exLat;
-                pathLng[8] = exLng;   //ex1
+                pathLat[0] = ex2Lat;
+                pathLng[0] = ex4Lng;  //ex9
+                pathLat[1] = ex4Lat;
+                pathLng[1] = ex4Lng;  //ex6
+                pathLat[2] = ex5Lat;
+                pathLng[2] = ex3Lng;  //ex3
+                pathLat[3] = ex5Lat;
+                pathLng[3] = ex2Lng;  //ex2
+                pathLat[4] = ex4Lat;
+                pathLng[4] = exLng;   //ex1
+                pathLat[5] = ex2Lat;
+                pathLng[5] = exLng;   //ex1
+                pathLat[6] = ex3Lat;
+                pathLng[6] = ex5Lng;   //ex4
+                pathLat[7] = ex3Lat;
+                pathLng[7] = ex6Lng;   //ex7
+                pathLat[8] = ex2Lat;
+                pathLng[8] = ex7Lng;  //ex8
+                pathLat[9] = ex4Lat;
+                pathLng[9] = ex7Lng;  //ex9
+                pathLat[10] = ex5Lat;
+                pathLng[10] = ex6Lng;  //ex6
+                pathLat[11] = ex5Lat;
+                pathLng[11] = ex5Lng;  //ex3
+                pathLat[12] = ex4Lat;
+                pathLng[12] = exLng;  //ex2
+                pathLat[13] = exLat;
+                pathLng[13] = exLng;   //ex1
+                pathLat[14] = ex2Lat;
+                pathLng[14] = exLng;   //ex4
+                pathLat[15] = ex3Lat;
+                pathLng[15] = ex2Lng;   //ex7
+                pathLat[16] = ex3Lat;
+                pathLng[16] = ex3Lng;  //ex8
+                pathLat[17] = ex2Lat;
+                pathLng[17] = ex4Lng;  //ex9
+                Max_path_val = 17;
                 break;
 
             case 6:
-                pathLat[0] = exLat;
-                pathLng[0] = exLng;   //ex1
-                pathLat[1] = ex2Lat - addLat;
-                pathLng[1] = exLng;   //ex4
-                pathLat[2] = ex2Lat - addLat;
-                pathLng[2] = ex2Lng + addLng;  //ex5
-                pathLat[3] = ex3Lat - addLat * 2.0;
-                pathLng[3] = ex2Lng + addLng;  //ex8
-                pathLat[4] = ex3Lat - addLat * 2.0;
-                pathLng[4] = ex3Lng + addLng * 2.0;  //ex9
-                pathLat[5] = ex2Lat - addLat;
-                pathLng[5] = ex3Lng + addLng * 2.0;  //ex6
-                pathLat[6] = exLat;
-                pathLng[6] = ex3Lng + addLng * 2.0;  //ex3
-                pathLat[7] = exLat;
-                pathLng[7] = ex2Lng + addLng;  //ex2
-                pathLat[8] = exLat;
-                pathLng[8] = exLng;   //ex1
+                pathLat[0] = ex2Lat;
+                pathLng[0] = ex7Lng;  //ex8
+                pathLat[1] = ex4Lat;
+                pathLng[1] = ex7Lng;  //ex9
+                pathLat[2] = ex5Lat;
+                pathLng[2] = ex6Lng;  //ex6
+                pathLat[3] = ex5Lat;
+                pathLng[3] = ex5Lng;  //ex3
+                pathLat[4] = ex4Lat;
+                pathLng[4] = exLng;  //ex2
+                pathLat[5] = exLat;
+                pathLng[5] = exLng;   //ex1
+                pathLat[6] = ex2Lat;
+                pathLng[6] = exLng;   //ex4
+                pathLat[7] = ex3Lat;
+                pathLng[7] = ex2Lng;   //ex7
+                pathLat[8] = ex3Lat;
+                pathLng[8] = ex3Lng;  //ex8
+                pathLat[9] = ex2Lat;
+                pathLng[9] = ex4Lng;  //ex9
+                pathLat[10] = ex4Lat;
+                pathLng[10] = ex4Lng;  //ex6
+                pathLat[11] = ex5Lat;
+                pathLng[11] = ex3Lng;  //ex3
+                pathLat[12] = ex5Lat;
+                pathLng[12] = ex2Lng;  //ex2
+                pathLat[13] = ex4Lat;
+                pathLng[13] = exLng;   //ex1
+                pathLat[14] = ex2Lat;
+                pathLng[14] = exLng;   //ex1
+                pathLat[15] = ex3Lat;
+                pathLng[15] = ex5Lng;   //ex4
+                pathLat[16] = ex3Lat;
+                pathLng[16] = ex6Lng;   //ex7
+                pathLat[17] = ex2Lat;
+                pathLng[17] = ex7Lng;  //ex8
+                Max_path_val = 17;
                 break;
 
             case 7:
                 pathLat[0] = exLat;
                 pathLng[0] = exLng;   //ex1
                 pathLat[1] = exLat;
-                pathLng[1] = ex2Lng + addLng;  //ex2
-                pathLat[2] = exLat;
-                pathLng[2] = ex3Lng + addLng * 2.0;  //ex3
-                pathLat[3] = ex2Lat - addLat;
-                pathLng[3] = ex3Lng + addLng * 2.0;  //ex6
-                pathLat[4] = ex3Lat - addLat * 2.0;
-                pathLng[4] = ex3Lng + addLng * 2.0;  //ex9
-                pathLat[5] = ex3Lat - addLat * 2.0;
-                pathLng[5] = ex2Lng + addLng;  //ex8
-                pathLat[6] = ex3Lat - addLat * 2.0;
-                pathLng[6] = exLng;   //ex7
-                pathLat[7] = ex2Lat - addLat;
-                pathLng[7] = exLng;   //ex4
-                pathLat[8] = exLat;
-                pathLng[8] = exLng;   //ex1
+                pathLng[1] = exLng + addLng*2;  //ex2
+                pathLat[2] = exLat - addLat * 2.0;
+                pathLng[2] = exLng + addLng * 2.0;  //ex9
+                pathLat[3] = exLat - addLat * 2.0;
+                pathLng[3] = exLng;  //ex8
+                pathLat[4] = exLat;
+                pathLng[4] = exLng;   //ex1
+                Max_path_val = 4;
                 break;
-
+/*
             case 8:
                 pathLat[0] = exLat;
                 pathLng[0] = exLng;   //ex1
@@ -936,7 +1030,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             timerHandler.post(new Runnable() {
                 public void run() {
                     if (connectFlg && startCount == 1) {
-                        try {
+                        try {//2回に一回しかできてない．．．
                             MDeg = mmInStream.read() * 2;//6軸センサによる方位測定
                             if (MDeg > 180) {
                                 MDeg = MDeg - 360;
@@ -944,17 +1038,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                        countdeg++;
                     }
 
                     SDeg = (int) sensorChangeEvent.Deg;
 
                     //最終座標に着いたら終了
-                    if (path_val == 17) {
+                    if (path_val == Max_path_val) {
                         //次の座標までの距離計算　results[0]…2点間の距離
-                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results);
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, pathLat[path_val], pathLng[path_val], results);
                         //次の座標までの角度計算　results[1]…2点間の角度
-                        if(mode == 1)target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
-                        if(mode == 2)target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
+                        target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                        //target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
                         if (target_deg > 180) target_deg = target_deg - 360;
                         else if (target_deg < -180) target_deg = target_deg + 360;
 
@@ -982,16 +1077,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                 mainTimer = null;
                                 mainTimerTask = null;
                             }
+                            save();
                         } else {
                             if (connectFlg) outputToDevice(target_deg);
                         }
                     }
 
                     else if (path_val == 0) {
-                        Location.distanceBetween(currentLat, currentLng, startLat, startLng, results1);
-                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results2);
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, startLat, startLng, results1);
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, pathLat[path_val], pathLng[path_val], results2);
                         Location.distanceBetween(startLat, startLng, pathLat[path_val], pathLng[path_val], results3);
-                        Location.distanceBetween(startLat, startLng, currentLat, currentLng, results4);
+                        Location.distanceBetween(startLat, startLng, FcurrentLat, FcurrentLng, results4);
                         waypointDeg = Math.abs((int) results3[1] - (int) results4[1]);
                         if (waypointDeg > 180) waypointDeg = 360 - waypointDeg;
                         objectDistance = results1[0] * Math.sin(Math.toRadians(waypointDeg));//被験者から経路までの距離
@@ -1007,9 +1103,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         }
                         guidePoint = computeOffset(new LatLng(startLat, startLng), guideDistance, results3[1]);//誘導点の座標
 
-                        Location.distanceBetween(currentLat, currentLng, guidePoint.latitude, guidePoint.longitude, results);
-                        if(mode == 1)target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
-                        if(mode == 2)target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, guidePoint.latitude, guidePoint.longitude, results);
+                        target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                        //target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
 
                         if (target_deg > 180) {
                             target_deg = target_deg - 360;
@@ -1017,7 +1113,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             target_deg = target_deg + 360;
                         }
 
-                        LatLng current_pos = new LatLng(currentLat, currentLng);
+                        LatLng current_pos = new LatLng(FcurrentLat, FcurrentLng);
                         ArrayList<LatLng> current_points1 = new ArrayList<>();
                         current_points1.clear();
                         current_points1.add(current_pos);
@@ -1050,10 +1146,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     }
 
                     else {
-                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val - 1], pathLng[path_val - 1], results1);
-                        Location.distanceBetween(currentLat, currentLng, pathLat[path_val], pathLng[path_val], results2);
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, pathLat[path_val - 1], pathLng[path_val - 1], results1);
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, pathLat[path_val], pathLng[path_val], results2);
                         Location.distanceBetween(pathLat[path_val - 1], pathLng[path_val - 1], pathLat[path_val], pathLng[path_val], results3);
-                        Location.distanceBetween(pathLat[path_val - 1], pathLng[path_val - 1], currentLat, currentLng, results4);
+                        Location.distanceBetween(pathLat[path_val - 1], pathLng[path_val - 1], FcurrentLat, FcurrentLng, results4);
                         waypointDeg = Math.abs((int) results3[1] - (int) results4[1]);
                         if (waypointDeg > 180) waypointDeg = 360 - waypointDeg;
                         objectDistance = results1[0] * Math.sin(Math.toRadians(waypointDeg));//被験者から経路までの距離
@@ -1069,9 +1165,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         }
                         guidePoint = computeOffset(new LatLng(pathLat[path_val - 1], pathLng[path_val - 1]), guideDistance, results3[1]);//誘導点の座標
 
-                        Location.distanceBetween(currentLat, currentLng, guidePoint.latitude, guidePoint.longitude, results);
-                        if(mode == 1)target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
-                        if(mode == 2)target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
+                        Location.distanceBetween(FcurrentLat, FcurrentLng, guidePoint.latitude, guidePoint.longitude, results);
+                        target_deg = (int) results[1] - (int) sensorChangeEvent.Deg;  //(Googlemap2点間の角度)　-　(地磁気センサ)
+                        //target_deg = (int) results[1] - MDeg; //6軸センサによる方位算出
 
                         if (target_deg > 180) {
                             target_deg = target_deg - 360;
@@ -1079,7 +1175,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             target_deg = target_deg + 360;
                         }
 
-                        LatLng current_pos = new LatLng(currentLat, currentLng);
+                        LatLng current_pos = new LatLng(FcurrentLat, FcurrentLng);
                         ArrayList<LatLng> current_points1 = new ArrayList<>();
                         current_points1.clear();
                         current_points1.add(current_pos);
@@ -1115,12 +1211,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     if(startCount == 1) {
                         //保存用
-                        array1[measure_val] = currentLat;
-                        array2[measure_val] = currentLng;
+                        array1[measure_val] = FcurrentLat;
+                        array2[measure_val] = FcurrentLng;
                         array3[measure_val] = MDeg;
                         array4[measure_val] = SDeg;
                         array5[measure_val] = target_deg;
-                        array6[measure_val] = mode;
+                        array6[measure_val] = countdeg;
                         array7[measure_val] = guidePoint.longitude;
                         array8[measure_val] = guidePoint.latitude;
                         measure_val++;
